@@ -7,7 +7,6 @@ import type { User, Account } from "./schema";
  * 根据 provider 和 providerAccountId 查找账户
  */
 export async function findAccountByProvider(providerAccountId: string, provider: string): Promise<Account | null> {
-  const db = useDrizzle();
   const result = await db
     .select()
     .from(accounts)
@@ -21,7 +20,6 @@ export async function findAccountByProvider(providerAccountId: string, provider:
  * 根据用户 ID 查找用户
  */
 export async function findUserById(userId: string): Promise<User | null> {
-  const db = useDrizzle();
   const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
   return result[0] || null;
@@ -31,7 +29,6 @@ export async function findUserById(userId: string): Promise<User | null> {
  * 根据邮箱查找用户
  */
 export async function findUserByEmail(email: string): Promise<User | null> {
-  const db = useDrizzle();
   const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
   return result[0] || null;
@@ -47,7 +44,6 @@ export async function createUser(data: {
   avatar?: string | null;
   password?: string | null;
 }): Promise<User> {
-  const db = useDrizzle();
   const result = await db
     .insert(users)
     .values({
@@ -63,7 +59,6 @@ export async function createUser(data: {
 }
 
 async function updateUserEmail(userId: string, email: string): Promise<void> {
-  const db = useDrizzle();
   await db.update(users).set({ email }).where(eq(users.id, userId));
 }
 
@@ -75,7 +70,6 @@ export async function createAccount(data: {
   provider: string;
   providerAccountId: string;
 }): Promise<Account> {
-  const db = useDrizzle();
   const result = await db
     .insert(accounts)
     .values({

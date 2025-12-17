@@ -1,16 +1,17 @@
 import * as schema from "../database/schema";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
 export const tables = schema;
 
-let pool: Pool | null = null;
-
 export function useDrizzle() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL!,
-    });
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set");
   }
-  return drizzle(pool, { schema });
+  const client = postgres(connectionString, { prepare: false });
+  return drizzle(client, { schema });
 }
+
+// 导出便捷的数据库实例
+export const db = useDrizzle();
