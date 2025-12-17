@@ -22,7 +22,7 @@
 - [x] **开发工具** - Nuxt DevTools 集成
 - [x] **暗色模式切换** - 主题系统完善
 - [x] **国际化支持** - i18n 多语言配置
-- [ ] **数据库集成** - Prisma ORM + PostgreSQL
+- [x] **数据库集成** - Drizzle ORM + PostgreSQL
 - [ ] **日志系统** - 统一日志收集和分析
 - [ ] **Docker 部署** - 容器化部署方案
 
@@ -34,6 +34,7 @@
 - **Tailwind CSS v4** — 新版原子化样式系统，性能更优
 - **shadcn-vue** — 基于 Radix UI 的高质量 Vue 组件库
 - **TypeScript** — 完整类型支持，提升开发效率
+- **Drizzle ORM** — 类型安全的 SQL ORM，配合 PostgreSQL 数据库
 
 ### 🔐 身份认证 (nuxt-auth-utils)
 
@@ -79,9 +80,19 @@ NuxtShadeKit
 │   └── app.vue             # 应用入口
 ├── server/
 │   ├── api/                # API 路由
-│   └── routes/
-│       └── auth/           # OAuth 认证路由
-│           └── github.get.ts
+│   ├── database/           # 数据库相关
+│   │   ├── schema.ts       # 数据库模式定义
+│   │   ├── user.db.ts      # 用户数据库操作
+│   │   └── migrations/     # 数据库迁移文件
+│   ├── routes/
+│   │   └── auth/           # OAuth 认证路由
+│   │       └── github.get.ts
+│   ├── types/              # 服务端类型定义
+│   │   └── auth.d.ts
+│   └── utils/              # 服务端工具函数
+│       ├── drizzle.ts      # 数据库连接
+│       └── id.ts           # ID 生成工具
+├── drizzle.config.ts       # Drizzle 配置
 ├── nuxt.config.ts          # Nuxt 配置
 └── package.json
 ```
@@ -118,6 +129,9 @@ NUXT_SESSION_PASSWORD=your-secret-password-min-32-chars
 # GitHub OAuth（用于 GitHub 登录）
 NUXT_OAUTH_GITHUB_CLIENT_ID=your-github-client-id
 NUXT_OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# PostgreSQL 数据库连接
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 ```
 
 ### 4. 启动开发环境
@@ -219,6 +233,136 @@ export default defineNuxtConfig({
 - ✅ 设置合理的速率限制
 - ✅ 配置 HSTS 响应头
 
+## 🗄️ 数据库 (Drizzle ORM + PostgreSQL)
+
+### 核心配置
+
+项目集成了 **Drizzle ORM** 作为类型安全的 SQL ORM，配合 **PostgreSQL** 数据库使用。
+
+#### 配置文件 (`drizzle.config.ts`)
+
+```typescript
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  dialect: "postgresql",
+  schema: "./server/database/schema.ts",
+  out: "./server/database/migrations",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+#### 数据库模式 (`server/database/schema.ts`)
+
+```typescript
+import { char, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+
+// 用户表
+export const users = pgTable("users", {
+  id: char("id", { length: 26 }).primaryKey(), // ULID
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password"), // OAuth 登录时可以为空
+  avatar: text("avatar"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// OAuth 账户表
+export const accounts = pgTable("accounts", {
+  userId: char("user_id", { length: 26 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 15 }).notNull(),
+  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+});
+```
+
+### 环境变量配置
+
+在 `.env` 文件中添加数据库连接：
+
+```env
+# PostgreSQL 数据库连接
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+```
+
+### 开发命令
+
+```bash
+# 生成数据库迁移文件
+pnpm db:generate
+
+# 推送模式变更到数据库（开发环境）
+pnpm db:push
+
+# 运行数据库迁移（生产环境）
+pnpm db:migrate
+
+# 打开 Drizzle Studio（数据库管理界面）
+pnpm db:studio
+```
+
+### 数据库操作示例
+
+#### 在服务端 API 中使用
+
+```typescript
+// server/api/users.get.ts
+import { db } from "~/server/utils/drizzle";
+import { users } from "~/server/database/schema";
+
+export default defineEventHandler(async (event) => {
+  const allUsers = await db.select().from(users);
+  return allUsers;
+});
+```
+
+#### 创建用户
+
+```typescript
+import { db } from "~/server/utils/drizzle";
+import { users } from "~/server/database/schema";
+import { createUserId } from "~/server/utils/id";
+
+const newUser = await db
+  .insert(users)
+  .values({
+    id: createUserId(),
+    name: "用户名",
+    email: "user@example.com",
+  })
+  .returning();
+```
+
+### 主要特性
+
+| 特性            | 说明                                       |
+| --------------- | ------------------------------------------ |
+| **类型安全**    | 完整的 TypeScript 类型推导，编译时错误检查 |
+| **SQL 优先**    | 接近原生 SQL 的查询语法，性能优异          |
+| **迁移管理**    | 自动生成和管理数据库迁移文件               |
+| **关系查询**    | 支持复杂的表关系和联合查询                 |
+| **Studio 工具** | 内置的数据库管理界面，可视化操作           |
+
+### 生产环境部署
+
+1. **数据库准备**：
+   - 创建 PostgreSQL 数据库实例
+   - 配置连接字符串到环境变量
+
+2. **运行迁移**：
+
+   ```bash
+   pnpm db:migrate
+   ```
+
+3. **Cloudflare Pages 配置**：
+   - 在环境变量中添加 `DATABASE_URL`
+   - 确保数据库可从 Cloudflare 网络访问
+
 ## 🎨 UI 组件
 
 支持 40+ 高质量组件：Button、Card、Dialog、Form、Table、Select、Popover 等 — [完整列表](https://www.shadcn-vue.com/)
@@ -228,10 +372,17 @@ export default defineNuxtConfig({
 ### 开发命令
 
 ```bash
+# 项目开发
 pnpm dev       # 启动开发服务器
 pnpm build     # 构建生产版本
 pnpm preview   # 预览生产构建
 pnpm lint      # 代码格式化和检查
+
+# 数据库操作
+pnpm db:generate  # 生成数据库迁移文件
+pnpm db:push      # 推送模式变更到数据库（开发环境）
+pnpm db:migrate   # 运行数据库迁移（生产环境）
+pnpm db:studio    # 打开 Drizzle Studio 数据库管理界面
 ```
 
 ## 🚀 部署到 Cloudflare Pages
@@ -296,6 +447,7 @@ wrangler pages dev dist
      NUXT_OAUTH_GITHUB_CLIENT_ID       # GitHub OAuth Client ID（可选，如果构建时需要）
      NUXT_OAUTH_GITHUB_CLIENT_SECRET   # GitHub OAuth Client Secret（可选）
      NUXT_SESSION_PASSWORD             # Session 密钥（可选）
+     DATABASE_URL                      # PostgreSQL 数据库连接（可选）
      ```
 
 4. **首次部署**：
@@ -321,6 +473,7 @@ wrangler pages dev dist
      NUXT_OAUTH_GITHUB_CLIENT_ID=your-github-client-id
      NUXT_OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
      NUXT_SESSION_PASSWORD=your-secret-password-min-32-chars
+     DATABASE_URL=postgresql://username:password@host:5432/database
      ```
 
 ### 方式三：通过 Cloudflare Dashboard 部署
@@ -399,6 +552,8 @@ wrangler pages dev dist
 - [nuxt-security 文档](https://nuxt-security.vercel.app/)
 - [shadcn-vue 文档](https://www.shadcn-vue.com/)
 - [Tailwind CSS v4 文档](https://tailwindcss.com/)
+- [Drizzle ORM 文档](https://orm.drizzle.team/)
+- [PostgreSQL 文档](https://www.postgresql.org/docs/)
 
 ## 🤝 贡献
 

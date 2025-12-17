@@ -6,6 +6,9 @@ export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   modules: ["@nuxt/eslint", "shadcn-nuxt", "nuxt-auth-utils", "nuxt-security", "@nuxtjs/i18n"],
   nitro: {
+    imports: {
+      dirs: ["./server/types"],
+    },
     ...(process.env.NODE_ENV === "production" && { preset: "cloudflare-pages" }),
     cloudflare: {
       deployConfig: true,

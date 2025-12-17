@@ -22,7 +22,7 @@ A modern full-stack template project based on **Nuxt 4** + **Tailwind CSS v4** +
 - [x] **Development Tools** - Nuxt DevTools integration
 - [x] **Dark Mode Toggle** - Complete theme system
 - [x] **Internationalization Support** - i18n multi-language configuration
-- [ ] **Database Integration** - Prisma ORM + PostgreSQL
+- [x] **Database Integration** - Drizzle ORM + PostgreSQL
 - [ ] **Logging System** - Unified log collection and analysis
 - [ ] **Docker Deployment** - Containerized deployment solution
 
@@ -34,6 +34,7 @@ A modern full-stack template project based on **Nuxt 4** + **Tailwind CSS v4** +
 - **Tailwind CSS v4** — New atomic styling system with better performance
 - **shadcn-vue** — High-quality Vue component library based on Radix UI
 - **TypeScript** — Complete type support to improve development efficiency
+- **Drizzle ORM** — Type-safe SQL ORM paired with PostgreSQL database
 
 ### 🔐 Authentication (nuxt-auth-utils)
 
@@ -79,9 +80,19 @@ NuxtShadeKit
 │   └── app.vue             # Application entry
 ├── server/
 │   ├── api/                # API routes
-│   └── routes/
-│       └── auth/           # OAuth authentication routes
-│           └── github.get.ts
+│   ├── database/           # Database related
+│   │   ├── schema.ts       # Database schema definitions
+│   │   ├── user.db.ts      # User database operations
+│   │   └── migrations/     # Database migration files
+│   ├── routes/
+│   │   └── auth/           # OAuth authentication routes
+│   │       └── github.get.ts
+│   ├── types/              # Server-side type definitions
+│   │   └── auth.d.ts
+│   └── utils/              # Server-side utility functions
+│       ├── drizzle.ts      # Database connection
+│       └── id.ts           # ID generation utilities
+├── drizzle.config.ts       # Drizzle configuration
 ├── nuxt.config.ts          # Nuxt configuration
 └── package.json
 ```
@@ -118,6 +129,9 @@ NUXT_SESSION_PASSWORD=your-secret-password-min-32-chars
 # GitHub OAuth (for GitHub login)
 NUXT_OAUTH_GITHUB_CLIENT_ID=your-github-client-id
 NUXT_OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# PostgreSQL database connection
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 ```
 
 ### 4. Start Development Environment
@@ -219,6 +233,136 @@ export default defineNuxtConfig({
 - ✅ Set reasonable rate limits
 - ✅ Configure HSTS headers
 
+## 🗄️ Database (Drizzle ORM + PostgreSQL)
+
+### Core Configuration
+
+The project integrates **Drizzle ORM** as a type-safe SQL ORM, paired with **PostgreSQL** database.
+
+#### Configuration File (`drizzle.config.ts`)
+
+```typescript
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  dialect: "postgresql",
+  schema: "./server/database/schema.ts",
+  out: "./server/database/migrations",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+#### Database Schema (`server/database/schema.ts`)
+
+```typescript
+import { char, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+
+// Users table
+export const users = pgTable("users", {
+  id: char("id", { length: 26 }).primaryKey(), // ULID
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password"), // Can be null for OAuth login
+  avatar: text("avatar"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// OAuth accounts table
+export const accounts = pgTable("accounts", {
+  userId: char("user_id", { length: 26 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 15 }).notNull(),
+  providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+});
+```
+
+### Environment Variable Configuration
+
+Add database connection in `.env` file:
+
+```env
+# PostgreSQL database connection
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+```
+
+### Development Commands
+
+```bash
+# Generate database migration files
+pnpm db:generate
+
+# Push schema changes to database (development)
+pnpm db:push
+
+# Run database migrations (production)
+pnpm db:migrate
+
+# Open Drizzle Studio (database management interface)
+pnpm db:studio
+```
+
+### Database Operation Examples
+
+#### Usage in Server API
+
+```typescript
+// server/api/users.get.ts
+import { db } from "~/server/utils/drizzle";
+import { users } from "~/server/database/schema";
+
+export default defineEventHandler(async (event) => {
+  const allUsers = await db.select().from(users);
+  return allUsers;
+});
+```
+
+#### Create User
+
+```typescript
+import { db } from "~/server/utils/drizzle";
+import { users } from "~/server/database/schema";
+import { generateId } from "~/server/utils/id";
+
+const newUser = await db
+  .insert(users)
+  .values({
+    id: generateId(),
+    name: "Username",
+    email: "user@example.com",
+  })
+  .returning();
+```
+
+### Key Features
+
+| Feature                  | Description                                                     |
+| ------------------------ | --------------------------------------------------------------- |
+| **Type Safety**          | Complete TypeScript type inference, compile-time error checks   |
+| **SQL First**            | Near-native SQL query syntax with excellent performance         |
+| **Migration Management** | Automatic generation and management of database migration files |
+| **Relational Queries**   | Support for complex table relationships and join queries        |
+| **Studio Tool**          | Built-in database management interface for visual operations    |
+
+### Production Environment Deployment
+
+1. **Database Preparation**:
+   - Create PostgreSQL database instance
+   - Configure connection string to environment variables
+
+2. **Run Migrations**:
+
+   ```bash
+   pnpm db:migrate
+   ```
+
+3. **Cloudflare Pages Configuration**:
+   - Add `DATABASE_URL` to environment variables
+   - Ensure database is accessible from Cloudflare network
+
 ## 🎨 UI Components
 
 Supports 40+ high-quality components: Button, Card, Dialog, Form, Table, Select, Popover, etc. — [Full list](https://www.shadcn-vue.com/)
@@ -228,10 +372,17 @@ Supports 40+ high-quality components: Button, Card, Dialog, Form, Table, Select,
 ### Development Commands
 
 ```bash
+# Project development
 pnpm dev       # Start development server
 pnpm build     # Build production version
 pnpm preview   # Preview production build
 pnpm lint      # Code formatting and checking
+
+# Database operations
+pnpm db:generate  # Generate database migration files
+pnpm db:push      # Push schema changes to database (development)
+pnpm db:migrate   # Run database migrations (production)
+pnpm db:studio    # Open Drizzle Studio database management interface
 ```
 
 ## 🚀 Deploy to Cloudflare Pages
@@ -296,6 +447,7 @@ The project is configured with GitHub Actions workflow. Pushing to `master` or `
      NUXT_OAUTH_GITHUB_CLIENT_ID       # GitHub OAuth Client ID (optional, if needed during build)
      NUXT_OAUTH_GITHUB_CLIENT_SECRET   # GitHub OAuth Client Secret (optional)
      NUXT_SESSION_PASSWORD             # Session secret (optional)
+     DATABASE_URL                      # PostgreSQL database connection (optional)
      ```
 
 4. **First Deployment**:
@@ -321,6 +473,7 @@ The project is configured with GitHub Actions workflow. Pushing to `master` or `
      NUXT_OAUTH_GITHUB_CLIENT_ID=your-github-client-id
      NUXT_OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
      NUXT_SESSION_PASSWORD=your-secret-password-min-32-chars
+     DATABASE_URL=postgresql://username:password@host:5432/database
      ```
 
 ### Method 3: Deploy via Cloudflare Dashboard
@@ -349,6 +502,7 @@ The project is configured with GitHub Actions workflow. Pushing to `master` or `
    NUXT_OAUTH_GITHUB_CLIENT_ID=your-github-client-id
    NUXT_OAUTH_GITHUB_CLIENT_SECRET=your-github-client-secret
    NUXT_SESSION_PASSWORD=your-secret-password-min-32-chars
+   DATABASE_URL=postgresql://username:password@host:5432/database
    ```
 
 5. **Deploy**:
@@ -399,6 +553,8 @@ The project is configured with `.vscode/extensions.json`. VSCode will automatica
 - [nuxt-security Documentation](https://nuxt-security.vercel.app/)
 - [shadcn-vue Documentation](https://www.shadcn-vue.com/)
 - [Tailwind CSS v4 Documentation](https://tailwindcss.com/)
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 
 ## 🤝 Contributing
 

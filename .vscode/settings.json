@@ -3,8 +3,15 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "always"
+    "source.fixAll.eslint": "explicit"
   },
+  "eslint.rules.customizations": [
+    {
+      "rule": "*",
+      "fixable": true,
+      "severity": "off"
+    }
+  ],
   "prettier.enable": true,
   "editor.formatOnSaveMode": "file",
   "files.autoSave": "onFocusChange",
