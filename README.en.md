@@ -23,7 +23,7 @@ A modern full-stack template project based on **Nuxt 4** + **Tailwind CSS v4** +
 - [x] **Dark Mode Toggle** - Complete theme system
 - [x] **Internationalization Support** - i18n multi-language configuration
 - [x] **Database Integration** - Drizzle ORM + PostgreSQL
-- [ ] **Logging System** - Unified log collection and analysis
+- [x] **Logging System** - Unified log collection and analysis
 - [ ] **Docker Deployment** - Containerized deployment solution
 
 ## ✨ Core Features
@@ -92,6 +92,9 @@ NuxtShadeKit
 │   └── utils/              # Server-side utility functions
 │       ├── drizzle.ts      # Database connection
 │       └── id.ts           # ID generation utilities
+├── shared/
+│   └── utils/
+│       └── logger.ts       # Logging system configuration
 ├── drizzle.config.ts       # Drizzle configuration
 ├── nuxt.config.ts          # Nuxt configuration
 └── package.json
@@ -362,6 +365,91 @@ const newUser = await db
 3. **Cloudflare Pages Configuration**:
    - Add `DATABASE_URL` to environment variables
    - Ensure database is accessible from Cloudflare network
+
+## 📝 Logging System (Consola)
+
+### Core Configuration
+
+The project integrates **Consola** as a unified logging system, supporting log levels, module tags, and environment-adaptive features.
+
+#### Logger Configuration (`shared/utils/logger.ts`)
+
+```typescript
+import { createConsola } from "consola";
+
+// Development: Debug level | Production: Info level
+const logLevel = import.meta.dev ? 4 : 3;
+
+const logger = createConsola({
+  level: logLevel,
+  defaults: {
+    tag: "APP", // Default tag
+  },
+  formatOptions: {
+    // Use JSON format in production for log platform parsing
+    json: !import.meta.dev && import.meta.server,
+    date: true,
+    colors: true,
+  },
+});
+
+export default logger;
+```
+
+### Modular Usage
+
+Each module can create a tagged logger instance using `withTag` to differentiate log sources:
+
+```typescript
+// server/utils/drizzle.ts
+const log = logger.withTag("Drizzle");
+
+log.success("Database connection established");
+// Output: [Drizzle] Database connection established
+```
+
+```typescript
+// server/middleware/auth.ts
+const log = logger.withTag("Auth");
+
+log.warn("Unauthorized access attempt", { path: url.pathname });
+// Output: [Auth] Unauthorized access attempt { path: '/api/xxx' }
+```
+
+```typescript
+// server/routes/auth/github.get.ts
+const log = logger.withTag("OAuth:Github");
+
+log.error("GitHub OAuth error:", error);
+// Output: [OAuth:Github] GitHub OAuth error: ...
+```
+
+### Log Levels
+
+| Level   | Method          | Description                       |
+| ------- | --------------- | --------------------------------- |
+| Error   | `log.error()`   | Error messages                    |
+| Warn    | `log.warn()`    | Warning messages                  |
+| Info    | `log.info()`    | General information               |
+| Success | `log.success()` | Success messages                  |
+| Debug   | `log.debug()`   | Debug info (dev environment only) |
+
+### Key Features
+
+| Feature                  | Description                                          |
+| ------------------------ | ---------------------------------------------------- |
+| **Log Levels**           | Supports error/warn/info/success/debug levels        |
+| **Module Tags**          | Use `withTag()` to identify different module sources |
+| **Environment Adaptive** | Colorful output in dev, JSON format in production    |
+| **Timestamps**           | Automatic timestamps for tracking                    |
+| **Nuxt Auto-import**     | Server-side `logger` globally available              |
+
+### Production Environment Recommendations
+
+- ✅ Use JSON format output for log platforms like ELK/Datadog
+- ✅ Add clear tags for each module
+- ✅ Use appropriate log levels, avoid excessive debug logs
+- ✅ Never log sensitive information (passwords, tokens, etc.)
 
 ## 🎨 UI Components
 

@@ -23,7 +23,7 @@
 - [x] **暗色模式切换** - 主题系统完善
 - [x] **国际化支持** - i18n 多语言配置
 - [x] **数据库集成** - Drizzle ORM + PostgreSQL
-- [ ] **日志系统** - 统一日志收集和分析
+- [x] **日志系统** - 统一日志收集和分析
 - [ ] **Docker 部署** - 容器化部署方案
 
 ## ✨ 核心特性
@@ -92,6 +92,9 @@ NuxtShadeKit
 │   └── utils/              # 服务端工具函数
 │       ├── drizzle.ts      # 数据库连接
 │       └── id.ts           # ID 生成工具
+├── shared/
+│   └── utils/
+│       └── logger.ts       # 日志系统配置
 ├── drizzle.config.ts       # Drizzle 配置
 ├── nuxt.config.ts          # Nuxt 配置
 └── package.json
@@ -362,6 +365,91 @@ const newUser = await db
 3. **Cloudflare Pages 配置**：
    - 在环境变量中添加 `DATABASE_URL`
    - 确保数据库可从 Cloudflare 网络访问
+
+## 📝 日志系统 (Consola)
+
+### 核心配置
+
+项目集成了 **Consola** 作为统一的日志系统，支持分级日志、模块标签、环境自适应等特性。
+
+#### 日志配置 (`shared/utils/logger.ts`)
+
+```typescript
+import { createConsola } from "consola";
+
+// 开发环境: Debug 级别 | 生产环境: Info 级别
+const logLevel = import.meta.dev ? 4 : 3;
+
+const logger = createConsola({
+  level: logLevel,
+  defaults: {
+    tag: "APP", // 默认标签
+  },
+  formatOptions: {
+    // 生产环境使用 JSON 格式，便于日志平台解析
+    json: !import.meta.dev && import.meta.server,
+    date: true,
+    colors: true,
+  },
+});
+
+export default logger;
+```
+
+### 模块化使用
+
+每个模块可以通过 `withTag` 创建带标签的日志实例，便于区分日志来源：
+
+```typescript
+// server/utils/drizzle.ts
+const log = logger.withTag("Drizzle");
+
+log.success("Database connection established");
+// 输出: [Drizzle] Database connection established
+```
+
+```typescript
+// server/middleware/auth.ts
+const log = logger.withTag("Auth");
+
+log.warn("Unauthorized access attempt", { path: url.pathname });
+// 输出: [Auth] Unauthorized access attempt { path: '/api/xxx' }
+```
+
+```typescript
+// server/routes/auth/github.get.ts
+const log = logger.withTag("OAuth:Github");
+
+log.error("GitHub OAuth error:", error);
+// 输出: [OAuth:Github] GitHub OAuth error: ...
+```
+
+### 日志级别
+
+| 级别    | 方法            | 说明                   |
+| ------- | --------------- | ---------------------- |
+| Error   | `log.error()`   | 错误信息               |
+| Warn    | `log.warn()`    | 警告信息               |
+| Info    | `log.info()`    | 一般信息               |
+| Success | `log.success()` | 成功信息               |
+| Debug   | `log.debug()`   | 调试信息（仅开发环境） |
+
+### 主要特性
+
+| 特性              | 说明                                      |
+| ----------------- | ----------------------------------------- |
+| **分级日志**      | 支持 error/warn/info/success/debug 多级别 |
+| **模块标签**      | 通过 `withTag()` 区分不同模块的日志来源   |
+| **环境自适应**    | 开发环境彩色输出，生产环境 JSON 格式      |
+| **时间戳**        | 自动添加时间戳，便于追踪                  |
+| **Nuxt 自动导入** | 服务端 `logger` 全局可用，无需手动导入    |
+
+### 生产环境建议
+
+- ✅ 使用 JSON 格式输出，便于 ELK/Datadog 等日志平台解析
+- ✅ 为每个模块添加明确的标签
+- ✅ 合理使用日志级别，避免过多 debug 日志
+- ✅ 敏感信息（如密码、Token）不要记录到日志
 
 ## 🎨 UI 组件
 

@@ -3,6 +3,8 @@ import { eq, and } from "drizzle-orm";
 import { users, accounts } from "./schema";
 import type { User, Account } from "./schema";
 
+const log = logger.withTag("UserDB");
+
 /**
  * 根据 provider 和 providerAccountId 查找账户
  */
@@ -55,6 +57,7 @@ export async function createUser(data: {
     })
     .returning();
 
+  log.success("User created", { id: result[0].id, email: result[0].email });
   return result[0];
 }
 
@@ -79,6 +82,7 @@ export async function createAccount(data: {
     })
     .returning();
 
+  log.success("Account linked", { userId: data.userId, provider: data.provider });
   return result[0];
 }
 

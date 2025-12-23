@@ -1,5 +1,7 @@
 import { createOrUpdateUserByOAuth } from "~~/server/database/user.db";
 
+const log = logger.withTag("OAuth:Github");
+
 export default defineOAuthGitHubEventHandler({
   config: {
     emailRequired: true,
@@ -26,12 +28,12 @@ export default defineOAuthGitHubEventHandler({
 
       return sendRedirect(event, "/");
     } catch (error) {
-      console.error("Database error during GitHub OAuth:", error);
+      log.error("Database error during GitHub OAuth:", error);
       return sendRedirect(event, "/login?error=database_error");
     }
   },
   onError(event, error) {
-    console.error("GitHub OAuth error:", error);
+    log.error("GitHub OAuth error:", error);
     return sendRedirect(event, "/login");
   },
 });
