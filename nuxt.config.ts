@@ -9,11 +9,15 @@ export default defineNuxtConfig({
     imports: {
       dirs: ["./server/types"],
     },
-    ...(process.env.NODE_ENV === "production" && { preset: "cloudflare-pages" }),
-    cloudflare: {
-      deployConfig: true,
-      nodeCompat: true,
-    },
+    ...(process.env.NUXT_PRESET && {
+      preset: process.env.NUXT_PRESET,
+      ...(process.env.NUXT_PRESET === "cloudflare-pages" && {
+        cloudflare: {
+          deployConfig: true,
+          nodeCompat: true,
+        },
+      }),
+    }),
   },
   vite: {
     plugins: [tailwindcss()],
