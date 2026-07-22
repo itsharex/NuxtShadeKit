@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Moon, Sun } from "@lucide/vue";
 import { useColorMode } from "@vueuse/core";
-import { Moon, Sun } from "lucide-vue-next";
 
 const colorMode = useColorMode();
 
-const nextTheme = computed(() => (colorMode.value === "dark" ? "light" : "dark"));
+const nextTheme = computed(() =>
+  colorMode.value === "dark" ? "light" : "dark",
+);
 
 const switchTheme = () => {
   colorMode.value = nextTheme.value;
@@ -18,7 +20,10 @@ const startViewTransition = (event: MouseEvent) => {
 
   const x = event.clientX;
   const y = event.clientY;
-  const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  const endRadius = Math.hypot(
+    Math.max(x, window.innerWidth - x),
+    Math.max(y, window.innerHeight - y),
+  );
 
   const transition = document.startViewTransition(() => {
     switchTheme();
@@ -28,13 +33,16 @@ const startViewTransition = (event: MouseEvent) => {
     const duration = 600;
     document.documentElement.animate(
       {
-        clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`],
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${endRadius}px at ${x}px ${y}px)`,
+        ],
       },
       {
         duration: duration,
         easing: "cubic-bezier(.76,.32,.29,.99)",
         pseudoElement: "::view-transition-new(root)",
-      }
+      },
     );
   });
 };
@@ -42,7 +50,12 @@ const startViewTransition = (event: MouseEvent) => {
 
 <template>
   <ClientOnly>
-    <Button :aria-label="`Switch to ${nextTheme} mode`" variant="ghost" size="icon" @click="startViewTransition">
+    <Button
+      :aria-label="`Switch to ${nextTheme} mode`"
+      variant="ghost"
+      size="icon"
+      @click="startViewTransition"
+    >
       <Moon v-if="nextTheme === 'dark'" />
       <Sun v-else />
     </Button>

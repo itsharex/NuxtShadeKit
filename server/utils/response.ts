@@ -27,7 +27,11 @@ export function fail(message = "Error", code = 400): ApiResponse<null> {
 }
 
 // 自定义响应
-export function response<T>(code: number, message: string, data: T): ApiResponse<T> {
+export function response<T>(
+  code: number,
+  message: string,
+  data: T,
+): ApiResponse<T> {
   return {
     code,
     message,

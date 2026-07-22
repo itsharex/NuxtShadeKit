@@ -1,5 +1,5 @@
-onlyBuiltDependencies:
-  - "@parcel/watcher"
-  - esbuild
-  - unrs-resolver
-  - vue-demi
+allowBuilds:
+  esbuild: true
+  vue-demi: true
+minimumReleaseAgeExclude:
+  - lint-staged@17.1.1

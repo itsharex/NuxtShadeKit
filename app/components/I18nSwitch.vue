@@ -1,5 +1,5 @@
 <script setup>
-import { Languages } from "lucide-vue-next";
+import { Languages } from "@lucide/vue";
 const { locales } = useI18n();
 </script>
 
@@ -12,7 +12,11 @@ const { locales } = useI18n();
     </DropdownMenuTrigger>
     <DropdownMenuContent align="center">
       <DropdownMenuGroup>
-        <SwitchLocalePathLink v-for="loc in locales" :key="loc.code" :locale="loc.code">
+        <SwitchLocalePathLink
+          v-for="loc in locales"
+          :key="loc.code"
+          :locale="loc.code"
+        >
           <DropdownMenuItem>
             {{ loc.name }}
             <DropdownMenuShortcut>{{ loc.code }}</DropdownMenuShortcut>

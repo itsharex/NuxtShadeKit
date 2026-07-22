@@ -1,5 +1,5 @@
-import { char, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { char, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // 用户表
 export const users = pgTable("users", {

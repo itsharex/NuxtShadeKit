@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-12-11",
   devtools: { enabled: true },
   css: ["~/assets/css/tailwind.css"],
-  modules: ["@nuxt/eslint", "shadcn-nuxt", "nuxt-auth-utils", "nuxt-security", "@nuxtjs/i18n"],
+  modules: ["shadcn-nuxt", "nuxt-auth-utils", "nuxt-security", "@nuxtjs/i18n"],
   nitro: {
     imports: {
       dirs: ["./server/types"],

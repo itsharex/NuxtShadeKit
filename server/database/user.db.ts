@@ -8,11 +8,19 @@ const log = logger.withTag("UserDB");
 /**
  * 根据 provider 和 providerAccountId 查找账户
  */
-export async function findAccountByProvider(providerAccountId: string, provider: string): Promise<Account | null> {
+export async function findAccountByProvider(
+  providerAccountId: string,
+  provider: string,
+): Promise<Account | null> {
   const result = await db
     .select()
     .from(accounts)
-    .where(and(eq(accounts.provider, provider), eq(accounts.providerAccountId, providerAccountId)))
+    .where(
+      and(
+        eq(accounts.provider, provider),
+        eq(accounts.providerAccountId, providerAccountId),
+      ),
+    )
     .limit(1);
 
   return result[0] || null;
@@ -22,7 +30,11 @@ export async function findAccountByProvider(providerAccountId: string, provider:
  * 根据用户 ID 查找用户
  */
 export async function findUserById(userId: string): Promise<User | null> {
-  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
   return result[0] || null;
 }
@@ -31,7 +43,11 @@ export async function findUserById(userId: string): Promise<User | null> {
  * 根据邮箱查找用户
  */
 export async function findUserByEmail(email: string): Promise<User | null> {
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
 
   return result[0] || null;
 }
@@ -82,7 +98,10 @@ export async function createAccount(data: {
     })
     .returning();
 
-  log.success("Account linked", { userId: data.userId, provider: data.provider });
+  log.success("Account linked", {
+    userId: data.userId,
+    provider: data.provider,
+  });
   return result[0];
 }
 
@@ -90,9 +109,14 @@ export async function createAccount(data: {
  * 通过 GitHub OAuth 创建或更新用户
  * 这是主要的业务逻辑函数，处理 GitHub 登录的用户创建/更新流程
  */
-export async function createOrUpdateUserByOAuth(oAuthUser: OAuthUser): Promise<User> {
+export async function createOrUpdateUserByOAuth(
+  oAuthUser: OAuthUser,
+): Promise<User> {
   // 1. 查找是否已存在该 OAuth 账户
-  const existingAccount = await findAccountByProvider(oAuthUser.id, oAuthUser.provider);
+  const existingAccount = await findAccountByProvider(
+    oAuthUser.id,
+    oAuthUser.provider,
+  );
 
   if (existingAccount) {
     // 2. 如果账户已存在
